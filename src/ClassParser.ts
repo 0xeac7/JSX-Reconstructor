@@ -1292,8 +1292,6 @@ class ClassParser {
           ).callee as any as FunctionExpression
         ).body.body;
 
-        console.log(functionBody);
-
         const protoIdentifier = (
           (functionBody[2] as any as VariableDeclaration).declarations[0]
             .id as any as Identifier
@@ -1746,94 +1744,116 @@ class ClassParser {
           };
         };
 
+        const declaratorIndex = parent.declarations.indexOf(node);
+        const otherDeclarations = parent.declarations.filter(
+          (_, i) => i !== declaratorIndex
+        );
+
         return {
           ...parent,
-          type: "ClassDeclaration",
-          id: {
-            type: "Identifier",
-            name,
-          },
-          superClass,
-          body: {
-            type: "ClassBody",
-            body: [
-              classConstructor.body.body[0] &&
-                classConstructor.body.body[0].type !== "ReturnStatement" && {
-                  type: "MethodDefinition",
-                  static: false,
-                  computed: false,
-                  key: {
+          declarations: [
+            ...otherDeclarations,
+            {
+              ...node,
+              init: {
+                ...node.init,
+                callee: {
+                  type: "ClassDeclaration",
+                  id: {
                     type: "Identifier",
-                    name: "constructor",
+                    name,
                   },
-                  kind: "method",
-                  value: fixConstructorReferences(
-                    parseConstructor({
-                      ...classConstructor,
-                      type: "FunctionExpression",
-                      id: null,
-                      body: {
-                        ...classConstructor.body,
-                        body: parseFunctionBody(
-                          classConstructor as any as FunctionExpression
-                        ),
-                      },
-                    }) as any
-                  ),
-                },
-              ...functionBody.map((statement) => {
-                switch (statement.type) {
-                  case "ExpressionStatement": {
-                    if (
-                      statement.expression.type === "AssignmentExpression" &&
-                      statement.expression.left &&
-                      statement.expression.left.type === "MemberExpression" &&
-                      statement.expression.left.object &&
-                      statement.expression.left.object.type === "Identifier" &&
-                      (statement.expression.left.object.name ===
-                        protoIdentifier ||
-                        (classConstructor.id &&
-                          statement.expression.left.object.name ===
-                            classConstructor.id.name)) &&
-                      statement.expression.left.property &&
-                      statement.expression.left.property.type ===
-                        "Identifier" &&
-                      statement.expression.right &&
-                      statement.expression.right.type === "FunctionExpression"
-                    ) {
-                      const functionName =
-                        statement.expression.left.property.name;
-                      const functionExpression = statement.expression.right;
-
-                      return {
-                        type: "MethodDefinition",
-                        static:
-                          classConstructor.id &&
-                          statement.expression.left.object.name ===
-                            classConstructor.id.name
-                            ? true
-                            : false,
-                        computed: false,
-                        key: {
-                          type: "Identifier",
-                          name: functionName,
-                        },
-                        kind: "method",
-                        value: fixConstructorReferences({
-                          ...functionExpression,
-                          id: null,
-                          body: {
-                            ...functionExpression.body,
-                            body: parseFunctionBody(functionExpression),
+                  superClass,
+                  body: {
+                    type: "ClassBody",
+                    body: [
+                      classConstructor.body.body[0] &&
+                        classConstructor.body.body[0].type !==
+                          "ReturnStatement" && {
+                          type: "MethodDefinition",
+                          static: false,
+                          computed: false,
+                          key: {
+                            type: "Identifier",
+                            name: "constructor",
                           },
-                        }),
-                      } as any as MethodDefinition;
-                    }
-                  }
-                }
-              }),
-            ].filter((statement) => statement),
-          },
+                          kind: "method",
+                          value: fixConstructorReferences(
+                            parseConstructor({
+                              ...classConstructor,
+                              type: "FunctionExpression",
+                              id: null,
+                              body: {
+                                ...classConstructor.body,
+                                body: parseFunctionBody(
+                                  classConstructor as any as FunctionExpression
+                                ),
+                              },
+                            }) as any
+                          ),
+                        },
+                      ...functionBody.map((statement) => {
+                        switch (statement.type) {
+                          case "ExpressionStatement": {
+                            if (
+                              statement.expression.type ===
+                                "AssignmentExpression" &&
+                              statement.expression.left &&
+                              statement.expression.left.type ===
+                                "MemberExpression" &&
+                              statement.expression.left.object &&
+                              statement.expression.left.object.type ===
+                                "Identifier" &&
+                              (statement.expression.left.object.name ===
+                                protoIdentifier ||
+                                (classConstructor.id &&
+                                  statement.expression.left.object.name ===
+                                    classConstructor.id.name)) &&
+                              statement.expression.left.property &&
+                              statement.expression.left.property.type ===
+                                "Identifier" &&
+                              statement.expression.right &&
+                              statement.expression.right.type ===
+                                "FunctionExpression"
+                            ) {
+                              const functionName =
+                                statement.expression.left.property.name;
+                              const functionExpression =
+                                statement.expression.right;
+
+                              return {
+                                type: "MethodDefinition",
+                                static:
+                                  classConstructor.id &&
+                                  statement.expression.left.object.name ===
+                                    classConstructor.id.name
+                                    ? true
+                                    : false,
+                                computed: false,
+                                key: {
+                                  type: "Identifier",
+                                  name: functionName,
+                                },
+                                kind: "method",
+                                value: fixConstructorReferences({
+                                  ...functionExpression,
+                                  id: null,
+                                  body: {
+                                    ...functionExpression.body,
+                                    body: parseFunctionBody(functionExpression),
+                                  },
+                                }),
+                              } as any as MethodDefinition;
+                            }
+                          }
+                        }
+                      }),
+                    ].filter((statement) => statement),
+                  },
+                },
+              },
+            },
+          ],
         } as any as ClassDeclaration;
       }
     }

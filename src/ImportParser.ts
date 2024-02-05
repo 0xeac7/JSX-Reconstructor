@@ -67,8 +67,8 @@ class ImportParser {
     node: VariableDeclarator,
     parent: VariableDeclaration
   ): ImportDeclaration[] {
-    const exceptions = ["_invariant", "_lodash"];
-    const replacements = ["invariant", "_"];
+    const exceptions = ["_invariant", "_lodash", "_moment"];
+    const replacements = ["invariant", "_", "moment"];
 
     if (
       node.id &&
