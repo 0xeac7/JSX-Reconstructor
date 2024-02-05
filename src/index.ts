@@ -96,7 +96,7 @@ for (const file of files) {
     console.log(
       `${gradient.morning(
         `[${files.indexOf(currentFile) + 1}/${files.length}]`
-      )}\t${currentFile} ${chalk.bold(`*`)}`
+      )}\t${chalk.red(currentFile)}`
     );
   }
 }
