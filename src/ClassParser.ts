@@ -15,6 +15,8 @@ import {
 import * as walk from "acorn-walk";
 import * as recast from "recast";
 
+import fs from "fs";
+
 import { ParenthesizedExpression } from ".";
 
 export enum ClassType {
@@ -202,6 +204,15 @@ class ClassParser {
                 ) {
                   Object.assign(node, { object: { type: "ThisExpression" } });
                 }
+
+                if (
+                  superClass &&
+                  node.object &&
+                  recast.print(node.object).code ===
+                    recast.print(superClass).code
+                ) {
+                  Object.assign(node, { object: { type: "Super" } });
+                }
               },
             },
             walkBase
@@ -414,6 +425,8 @@ class ClassParser {
           const functionBody = functionExpression.body.body;
           let functionBodyClone: Statement[] = functionBody;
 
+          let isSpread: boolean = false;
+
           const lastNode =
             functionExpression.body.body[
               functionExpression.body.body.length - 1
@@ -434,12 +447,99 @@ class ClassParser {
             lastNode.type === "ReturnStatement" &&
             lastNode.argument &&
             lastNode.argument.type === "Identifier" &&
-            lastNode.argument.name === functionBody[0].declarations[0].id.name
+            lastNode.argument.name ===
+              functionBody[0].declarations[0].id.name &&
+            functionExpression.params.length === 0
           ) {
+            // args are spread :husk:
+            isSpread = true;
+
             const _this = functionBody[0].declarations[0].id.name;
 
             functionBodyClone = functionBody.slice(3);
             functionBodyClone.pop();
+
+            functionBodyClone = [
+              {
+                type: "ExpressionStatement",
+                expression: {
+                  type: "CallExpression",
+                  callee: { type: "Super" },
+                  arguments: [
+                    {
+                      type: "SpreadElement",
+                      argument: { type: "Identifier", name: "args" },
+                    },
+                  ],
+                  optional: false,
+                },
+              },
+              ...functionBodyClone,
+            ];
+
+            // @ts-ignore
+            walk.ancestor(
+              // @ts-ignore
+              {
+                ...functionExpression,
+                body: {
+                  ...functionExpression.body,
+                  body: functionBodyClone,
+                },
+              } as any,
+              {
+                // @ts-ignore
+                Identifier(node: Identifier, ancestors: Node[]) {
+                  if (node.name === _this) {
+                    Object.assign(node, { type: "ThisExpression" });
+                  }
+                },
+              },
+              walkBase
+            );
+          }
+
+          if (
+            superClass &&
+            functionBody[0].type === "VariableDeclaration" &&
+            functionBody[0].declarations[0] &&
+            functionBody[0].declarations[0].id.type === "Identifier" &&
+            functionBody[1].type === "ExpressionStatement" &&
+            functionBody[1].expression.type === "AssignmentExpression" &&
+            functionBody[1].expression.right.type === "LogicalExpression" &&
+            functionBody[1].expression.right.left.type === "CallExpression" &&
+            functionBody[1].expression.right.left.callee.type ===
+              "MemberExpression" &&
+            recast.print(functionBody[1].expression.right.left.callee.object)
+              .code === recast.print(superClass).code &&
+            functionBody[1].expression.right.operator === "||" &&
+            functionBody[1].expression.right.right.type === "ThisExpression" &&
+            lastNode.type === "ReturnStatement" &&
+            lastNode.argument &&
+            lastNode.argument.type === "Identifier" &&
+            lastNode.argument.name === functionBody[0].declarations[0].id.name
+          ) {
+            const _this = functionBody[0].declarations[0].id.name;
+            const _super = functionBody[1].expression.right.left;
+
+            const superArgs = _super.arguments;
+            superArgs.shift();
+
+            functionBodyClone = functionBody.slice(2);
+            functionBodyClone.pop();
+
+            functionBodyClone = [
+              {
+                type: "ExpressionStatement",
+                expression: {
+                  type: "CallExpression",
+                  callee: { type: "Super" },
+                  arguments: superArgs,
+                  optional: false,
+                },
+              },
+              ...functionBodyClone,
+            ];
 
             // @ts-ignore
             walk.ancestor(
@@ -465,6 +565,14 @@ class ClassParser {
 
           return {
             ...functionExpression,
+            params: isSpread
+              ? [
+                  {
+                    type: "RestElement",
+                    argument: { type: "Identifier", name: "args" },
+                  },
+                ]
+              : functionExpression.params,
             body: {
               ...functionExpression.body,
               body: functionBodyClone,
@@ -503,7 +611,7 @@ class ClassParser {
                         classConstructor as any as FunctionExpression
                       ),
                     },
-                  })
+                  }) as any
                 ),
               },
               ...functionBody.map((statement) => {
@@ -620,6 +728,17 @@ class ClassParser {
                 ) {
                   Object.assign(node, { object: { type: "ThisExpression" } });
                 }
+
+                if (
+                  superClass &&
+                  rawFunction.params[0] &&
+                  rawFunction.params[0].type === "Identifier" &&
+                  node.object &&
+                  node.object.type === "Identifier" &&
+                  node.object.name === rawFunction.params[0].name
+                ) {
+                  Object.assign(node, { object: { type: "Super" } });
+                }
               },
             },
             walkBase
@@ -832,6 +951,8 @@ class ClassParser {
           const functionBody = functionExpression.body.body;
           let functionBodyClone: Statement[] = functionBody;
 
+          let isSpread: boolean = false;
+
           const lastNode =
             functionExpression.body.body[
               functionExpression.body.body.length - 1
@@ -852,12 +973,99 @@ class ClassParser {
             lastNode.type === "ReturnStatement" &&
             lastNode.argument &&
             lastNode.argument.type === "Identifier" &&
-            lastNode.argument.name === functionBody[0].declarations[0].id.name
+            lastNode.argument.name ===
+              functionBody[0].declarations[0].id.name &&
+            functionExpression.params.length === 0
           ) {
+            // args are spread :husk:
+            isSpread = true;
+
             const _this = functionBody[0].declarations[0].id.name;
 
             functionBodyClone = functionBody.slice(3);
             functionBodyClone.pop();
+
+            functionBodyClone = [
+              {
+                type: "ExpressionStatement",
+                expression: {
+                  type: "CallExpression",
+                  callee: { type: "Super" },
+                  arguments: [
+                    {
+                      type: "SpreadElement",
+                      argument: { type: "Identifier", name: "args" },
+                    },
+                  ],
+                  optional: false,
+                },
+              },
+              ...functionBodyClone,
+            ];
+
+            // @ts-ignore
+            walk.ancestor(
+              // @ts-ignore
+              {
+                ...functionExpression,
+                body: {
+                  ...functionExpression.body,
+                  body: functionBodyClone,
+                },
+              } as any,
+              {
+                // @ts-ignore
+                Identifier(node: Identifier, ancestors: Node[]) {
+                  if (node.name === _this) {
+                    Object.assign(node, { type: "ThisExpression" });
+                  }
+                },
+              },
+              walkBase
+            );
+          }
+
+          if (
+            superClass &&
+            functionBody[0].type === "VariableDeclaration" &&
+            functionBody[0].declarations[0] &&
+            functionBody[0].declarations[0].id.type === "Identifier" &&
+            functionBody[1].type === "ExpressionStatement" &&
+            functionBody[1].expression.type === "AssignmentExpression" &&
+            functionBody[1].expression.right.type === "LogicalExpression" &&
+            functionBody[1].expression.right.left.type === "CallExpression" &&
+            functionBody[1].expression.right.left.callee.type ===
+              "MemberExpression" &&
+            recast.print(functionBody[1].expression.right.left.callee.object)
+              .code === recast.print(superClass).code &&
+            functionBody[1].expression.right.operator === "||" &&
+            functionBody[1].expression.right.right.type === "ThisExpression" &&
+            lastNode.type === "ReturnStatement" &&
+            lastNode.argument &&
+            lastNode.argument.type === "Identifier" &&
+            lastNode.argument.name === functionBody[0].declarations[0].id.name
+          ) {
+            const _this = functionBody[0].declarations[0].id.name;
+            const _super = functionBody[1].expression.right.left;
+
+            const superArgs = _super.arguments;
+            superArgs.shift();
+
+            functionBodyClone = functionBody.slice(2);
+            functionBodyClone.pop();
+
+            functionBodyClone = [
+              {
+                type: "ExpressionStatement",
+                expression: {
+                  type: "CallExpression",
+                  callee: { type: "Super" },
+                  arguments: superArgs,
+                  optional: false,
+                },
+              },
+              ...functionBodyClone,
+            ];
 
             // @ts-ignore
             walk.ancestor(
@@ -883,6 +1091,14 @@ class ClassParser {
 
           return {
             ...functionExpression,
+            params: isSpread
+              ? [
+                  {
+                    type: "RestElement",
+                    argument: { type: "Identifier", name: "args" },
+                  },
+                ]
+              : functionExpression.params,
             body: {
               ...functionExpression.body,
               body: functionBodyClone,
@@ -921,7 +1137,7 @@ class ClassParser {
                         classConstructor as any as FunctionExpression
                       ),
                     },
-                  })
+                  }) as any
                 ),
               },
               ...functionBody.map((statement) => {
