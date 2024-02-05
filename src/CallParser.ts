@@ -317,6 +317,25 @@ class CallParser {
         };
       }
 
+      case "ArrowFunctionExpression": {
+        if (!this.isJSXRuntime(node.callee)) return parent;
+        let matchingKey;
+
+        Object.keys(parent).forEach((key) => {
+          if ((parent as any)[key] == node) {
+            matchingKey = key;
+            // console.log(`[+] found matching property: "${key}"`);
+          }
+        });
+
+        if (!matchingKey) return parent;
+
+        const parentClone: any = { ...parent };
+        parentClone[matchingKey] = this.recurse(node) as unknown as any;
+
+        return parentClone;
+      }
+
       // @ts-ignore
       case "ParenthesizedExpression": {
         if (!this.isJSXRuntime(node.callee)) return parent;

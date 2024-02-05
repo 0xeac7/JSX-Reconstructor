@@ -106,7 +106,11 @@ const finishTime = Math.floor(new Date().getTime() / 1000);
 console.log();
 console.log(`Completed in ${finishTime - startTime}s.`);
 
-console.log(`▾ Errors: [${[...errors.values()].flat().length}]`);
+console.log(
+  `${[...errors.values()].flat().length >= 1 ? `▾` : `▸`} Errors: [${
+    [...errors.values()].flat().length
+  }]`
+);
 
 for (const key of errors.keys()) {
   console.log(`    ${chalk.bold(`▾ ${key}`)}`);
