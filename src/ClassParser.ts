@@ -563,6 +563,31 @@ class ClassParser {
             );
           }
 
+          // @ts-ignore
+          walk.ancestor(
+            // @ts-ignore
+            {
+              ...functionExpression,
+              body: {
+                ...functionExpression.body,
+                body: functionBodyClone,
+              },
+            } as any,
+            {
+              // @ts-ignore
+              FunctionExpression(node: FunctionExpression, ancestors: Node[]) {
+                Object.assign(node, {
+                  ...node,
+                  body: {
+                    ...node.body,
+                    body: parseFunctionBody(node),
+                  },
+                } as any);
+              },
+            },
+            walkBase
+          );
+
           return {
             ...functionExpression,
             params: isSpread
@@ -1088,6 +1113,31 @@ class ClassParser {
               walkBase
             );
           }
+
+          // @ts-ignore
+          walk.ancestor(
+            // @ts-ignore
+            {
+              ...functionExpression,
+              body: {
+                ...functionExpression.body,
+                body: functionBodyClone,
+              },
+            } as any,
+            {
+              // @ts-ignore
+              FunctionExpression(node: FunctionExpression, ancestors: Node[]) {
+                Object.assign(node, {
+                  ...node,
+                  body: {
+                    ...node.body,
+                    body: parseFunctionBody(node),
+                  },
+                } as any);
+              },
+            },
+            walkBase
+          );
 
           return {
             ...functionExpression,

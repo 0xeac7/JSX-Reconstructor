@@ -38,6 +38,9 @@ import {
 import ImportParser from "./ImportParser";
 import ExportParser from "./ExportParser";
 
+import chalk from "chalk";
+import gradient from "gradient-string";
+
 export interface ParenthesizedExpression {
   type: "ParenthesizedExpression";
   start: number;
@@ -59,9 +62,21 @@ const files = globSync(`input/**/*.js`).map((file) =>
   file.split("\\").slice(1).join("\\")
 );
 
+let currentFile = files[0];
+const errors = new Map<string, string[]>();
+
+const startTime = Math.floor(new Date().getTime() / 1000);
+
 for (const file of files) {
+  currentFile = file;
+
   try {
-    console.log(file);
+    console.log(
+      `${gradient.morning(
+        `[${files.indexOf(currentFile) + 1}/${files.length}]`
+      )}\t${currentFile}`
+    );
+
     const filePath = path.join(process.cwd(), "input", file);
     const data = readFileSync(filePath, "utf-8");
     const ast = parser.parse(data, {
@@ -76,8 +91,24 @@ for (const file of files) {
       prettier.format(recast.print(parsedAst).code, { parser: "babel" })
     );
   } catch (e: any) {
-    console.log(`error: ${e.toString()}`);
+    errors.set(currentFile, [...(errors.get(currentFile) || []), e.toString()]);
   }
+}
+
+const finishTime = Math.floor(new Date().getTime() / 1000);
+
+console.log();
+console.log(`Completed in ${finishTime - startTime}s.`);
+
+console.log(`▾ Errors: [${[...errors.values()].flat().length}]`);
+
+for (const key of errors.keys()) {
+  console.log(`    ${chalk.bold(`▾ ${key}`)}`);
+  for (const error of errors.get(key)!) {
+    console.log(`        ${error}`);
+  }
+
+  console.log();
 }
 
 function parseModule(node: acorn.Node) {

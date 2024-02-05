@@ -283,6 +283,25 @@ class CallParser {
         return parentClone;
       }
 
+      case "LogicalExpression": {
+        if (!this.isJSXRuntime(node.callee)) return parent;
+        let matchingKey;
+
+        Object.keys(parent).forEach((key) => {
+          if ((parent as any)[key] == node) {
+            matchingKey = key;
+            // console.log(`[+] found matching property: "${key}"`);
+          }
+        });
+
+        if (!matchingKey) return parent;
+
+        const parentClone: any = { ...parent };
+        parentClone[matchingKey] = this.recurse(node) as unknown as any;
+
+        return parentClone;
+      }
+
       case "ArrayExpression": {
         if (!this.isJSXRuntime(node.callee)) return parent;
         const elements = [...parent.elements];
@@ -296,8 +315,25 @@ class CallParser {
         };
       }
 
+      // @ts-ignore
+      case "ParenthesizedExpression": {
+        if (!this.isJSXRuntime(node.callee)) return parent;
+        return this.recurse(node) as unknown as any;
+      }
+
       case "CallExpression": {
         // this will be random, leftover _jsx calls because the actual conversion happens later in the process
+        return parent;
+      }
+
+      // @ts-ignore
+      case "JSXElement": {
+        // same as CallExpression, will be recursed
+        return parent;
+      }
+
+      case "SequenceExpression": {
+        // already accounted for in index.ts
         return parent;
       }
 
