@@ -71,12 +71,6 @@ for (const file of files) {
   currentFile = file;
 
   try {
-    console.log(
-      `${gradient.morning(
-        `[${files.indexOf(currentFile) + 1}/${files.length}]`
-      )}\t${currentFile}`
-    );
-
     const filePath = path.join(process.cwd(), "input", file);
     const data = readFileSync(filePath, "utf-8");
     const ast = parser.parse(data, {
@@ -90,8 +84,20 @@ for (const file of files) {
       path.join(process.cwd(), "output", `${file}x`),
       prettier.format(recast.print(parsedAst).code, { parser: "babel" })
     );
+
+    console.log(
+      `${gradient.morning(
+        `[${files.indexOf(currentFile) + 1}/${files.length}]`
+      )}\t${currentFile}`
+    );
   } catch (e: any) {
     errors.set(currentFile, [...(errors.get(currentFile) || []), e.toString()]);
+
+    console.log(
+      `${gradient.morning(
+        `[${files.indexOf(currentFile) + 1}/${files.length}]`
+      )}\t${currentFile} ${chalk.bold(`*`)}`
+    );
   }
 }
 

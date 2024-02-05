@@ -89,6 +89,7 @@ class ClassParser {
 
           if (
             !(
+              protoNode &&
               protoNode.type === "VariableDeclaration" &&
               protoNode.declarations[0].init &&
               protoNode.declarations[0].init.type === "MemberExpression" &&
@@ -616,29 +617,30 @@ class ClassParser {
           body: {
             type: "ClassBody",
             body: [
-              classConstructor.body.body[0].type !== "ReturnStatement" && {
-                type: "MethodDefinition",
-                static: false,
-                computed: false,
-                key: {
-                  type: "Identifier",
-                  name: "constructor",
+              classConstructor.body.body[0] &&
+                classConstructor.body.body[0].type !== "ReturnStatement" && {
+                  type: "MethodDefinition",
+                  static: false,
+                  computed: false,
+                  key: {
+                    type: "Identifier",
+                    name: "constructor",
+                  },
+                  kind: "method",
+                  value: fixConstructorReferences(
+                    parseConstructor({
+                      ...classConstructor,
+                      type: "FunctionExpression",
+                      id: null,
+                      body: {
+                        ...classConstructor.body,
+                        body: parseFunctionBody(
+                          classConstructor as any as FunctionExpression
+                        ),
+                      },
+                    }) as any
+                  ),
                 },
-                kind: "method",
-                value: fixConstructorReferences(
-                  parseConstructor({
-                    ...classConstructor,
-                    type: "FunctionExpression",
-                    id: null,
-                    body: {
-                      ...classConstructor.body,
-                      body: parseFunctionBody(
-                        classConstructor as any as FunctionExpression
-                      ),
-                    },
-                  }) as any
-                ),
-              },
               ...functionBody.map((statement) => {
                 switch (statement.type) {
                   case "ExpressionStatement": {
@@ -1167,29 +1169,30 @@ class ClassParser {
           body: {
             type: "ClassBody",
             body: [
-              classConstructor.body.body[0].type !== "ReturnStatement" && {
-                type: "MethodDefinition",
-                static: false,
-                computed: false,
-                key: {
-                  type: "Identifier",
-                  name: "constructor",
+              classConstructor.body.body[0] &&
+                classConstructor.body.body[0].type !== "ReturnStatement" && {
+                  type: "MethodDefinition",
+                  static: false,
+                  computed: false,
+                  key: {
+                    type: "Identifier",
+                    name: "constructor",
+                  },
+                  kind: "method",
+                  value: fixConstructorReferences(
+                    parseConstructor({
+                      ...classConstructor,
+                      type: "FunctionExpression",
+                      id: null,
+                      body: {
+                        ...classConstructor.body,
+                        body: parseFunctionBody(
+                          classConstructor as any as FunctionExpression
+                        ),
+                      },
+                    }) as any
+                  ),
                 },
-                kind: "method",
-                value: fixConstructorReferences(
-                  parseConstructor({
-                    ...classConstructor,
-                    type: "FunctionExpression",
-                    id: null,
-                    body: {
-                      ...classConstructor.body,
-                      body: parseFunctionBody(
-                        classConstructor as any as FunctionExpression
-                      ),
-                    },
-                  }) as any
-                ),
-              },
               ...functionBody.map((statement) => {
                 switch (statement.type) {
                   case "ExpressionStatement": {
