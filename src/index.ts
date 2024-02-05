@@ -266,9 +266,7 @@ function parseModule(node: acorn.Node) {
         });
       }
 
-      if (exportParser.isExport(node)) {
-        Object.assign(node, exportParser.parse(node, program));
-      }
+      Object.assign(node, exportParser.parse(node, program));
     },
 
     // @ts-ignore
