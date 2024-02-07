@@ -1,14 +1,7 @@
 import * as acorn from "acorn";
 import * as walk from "acorn-walk";
 import acornJSX from "acorn-jsx";
-import {
-  outputFileSync as writeFileSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-} from "fs-extra";
-import { globSync } from "glob";
-import path from "path";
+
 import {
   Program,
   CallExpression,
@@ -24,22 +17,22 @@ import {
   ImportDeclaration,
   Expression,
 } from "estree";
+
 import * as recast from "recast";
 import * as prettier from "prettier";
 
 import ClassParser, { ClassType } from "./ClassParser";
 import CallParser from "./CallParser";
+
 import {
   isCustomJSXRuntime,
   parseComponentProps,
   isBooleanOperator,
   pushWithoutDuplicates,
 } from "./utils";
+
 import ImportParser from "./ImportParser";
 import ExportParser from "./ExportParser";
-
-import chalk from "chalk";
-import gradient from "gradient-string";
 
 export interface ParenthesizedExpression {
   type: "ParenthesizedExpression";
@@ -48,77 +41,21 @@ export interface ParenthesizedExpression {
   expression: Expression;
 }
 
-const parser = acorn.Parser.extend(acornJSX());
+export const parser = acorn.Parser.extend(acornJSX());
 
-if (!existsSync(path.join(process.cwd(), "input"))) {
-  mkdirSync(path.join(process.cwd(), "input"));
+export function parseFile(data: string): string {
+  const ast = parser.parse(data, {
+    sourceType: "module",
+    ecmaVersion: "latest",
+    preserveParens: true,
+  });
+  const parsedAst = parse(ast);
+
+  return prettier.format(recast.print(parsedAst).code, { parser: "babel" });
 }
 
-if (!existsSync(path.join(process.cwd(), "output"))) {
-  mkdirSync(path.join(process.cwd(), "output"));
-}
-
-const files = globSync(`input/**/*.js`).map((file) =>
-  file.split("\\").slice(1).join("\\")
-);
-
-let currentFile = files[0];
-const errors = new Map<string, string[]>();
-
-const startTime = Math.floor(new Date().getTime() / 1000);
-
-for (const file of files) {
-  currentFile = file;
-
-  try {
-    const filePath = path.join(process.cwd(), "input", file);
-    const data = readFileSync(filePath, "utf-8");
-    const ast = parser.parse(data, {
-      sourceType: "module",
-      ecmaVersion: "latest",
-      preserveParens: true,
-    });
-    const parsedAst = parseModule(ast);
-
-    writeFileSync(
-      path.join(process.cwd(), "output", `${file}x`),
-      prettier.format(recast.print(parsedAst).code, { parser: "babel" })
-    );
-
-    console.log(
-      `${gradient.morning(
-        `[${files.indexOf(currentFile) + 1}/${files.length}]`
-      )}\t${currentFile}`
-    );
-  } catch (e: any) {
-    errors.set(currentFile, [...(errors.get(currentFile) || []), e.toString()]);
-
-    console.log(
-      `${gradient.morning(
-        `[${files.indexOf(currentFile) + 1}/${files.length}]`
-      )}\t${chalk.red(currentFile)}`
-    );
-  }
-}
-
-const finishTime = Math.floor(new Date().getTime() / 1000);
-
-console.log();
-console.log(`Completed in ${finishTime - startTime}s.`);
-
-console.log(
-  `${[...errors.values()].flat().length >= 1 ? `▾` : `▸`} Errors: [${
-    [...errors.values()].flat().length
-  }]`
-);
-
-for (const key of errors.keys()) {
-  console.log(`    ${chalk.bold(`▾ ${key}`)}`);
-  for (const error of errors.get(key)!) {
-    console.log(`        ${error}`);
-  }
-
-  console.log();
+export function parse(ast: acorn.Node): acorn.Node {
+  return parseModule(ast);
 }
 
 function parseModule(node: acorn.Node) {
@@ -325,8 +262,8 @@ function parseModule(node: acorn.Node) {
         proxiedMemberExpression.object.type === "Identifier" &&
         // node.object.name === "React" &&
         proxiedMemberExpression.property.type === "Identifier" /* &&
-				(proxiedMemberExpression.property.name.endsWith("jsx") ||
-					proxiedMemberExpression.property.name.endsWith("jsxs")) */
+                  (proxiedMemberExpression.property.name.endsWith("jsx") ||
+                      proxiedMemberExpression.property.name.endsWith("jsxs")) */
       ) {
         const callExpression = parent as CallExpression;
         const [component, originalProps, ...children]: any[] =
